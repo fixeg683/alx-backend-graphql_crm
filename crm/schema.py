@@ -24,7 +24,7 @@ class OrderType(DjangoObjectType):
         model = Order
         fields = "__all__"
 
-# TASK 2 - Mutations
+# TASK 2 - Mutations (Updated to use .save())
 class CreateCustomer(graphene.Mutation):
     class Arguments:
         name = graphene.String(required=True)
@@ -42,7 +42,8 @@ class CreateCustomer(graphene.Mutation):
             if not re.match(r"^\+?\d[\d\-]{7,}$", phone):
                 raise Exception("Invalid phone number format")
 
-        customer = Customer.objects.create(name=name, email=email, phone=phone)
+        customer = Customer(name=name, email=email, phone=phone)
+        customer.save()  # Explicit save() call
         return CreateCustomer(customer=customer, message="Customer created successfully")
 
 class BulkCustomerInput(graphene.InputObjectType):
@@ -67,12 +68,13 @@ class BulkCreateCustomers(graphene.Mutation):
                     errors.append(f"{item['email']}: Email already exists")
                     continue
 
-                c = Customer.objects.create(
+                customer = Customer(
                     name=item["name"],
                     email=item["email"],
                     phone=item.get("phone")
                 )
-                created.append(c)
+                customer.save()  # Explicit save() call
+                created.append(customer)
 
             except Exception as e:
                 errors.append(str(e))
@@ -94,7 +96,8 @@ class CreateProduct(graphene.Mutation):
         if stock < 0:
             raise Exception("Stock cannot be negative")
 
-        product = Product.objects.create(name=name, price=price, stock=stock)
+        product = Product(name=name, price=price, stock=stock)
+        product.save()  # Explicit save() call
         return CreateProduct(product=product)
 
 class CreateOrder(graphene.Mutation):
@@ -120,13 +123,16 @@ class CreateOrder(graphene.Mutation):
 
         total = sum([p.price for p in products])
 
-        order = Order.objects.create(
+        order = Order(
             customer=customer,
             total_amount=total,
             order_date=order_date or timezone.now()
         )
-
+        order.save()  # Explicit save() call
+        
+        # For ManyToMany relationship, we need to save first before adding
         order.products.set(products)
+        
         return CreateOrder(order=order)
 
 class Mutation(graphene.ObjectType):
