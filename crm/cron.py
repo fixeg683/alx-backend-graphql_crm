@@ -2,9 +2,7 @@ from datetime import datetime
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
 
-def log_crm_heartbeat():
-    timestamp = datetime.now().strftime("%d/%m/%Y-%H:%M:%S")
-
+def update_low_stock():
     transport = RequestsHTTPTransport(
         url="http://localhost:8000/graphql",
         verify=True,
@@ -16,17 +14,22 @@ def log_crm_heartbeat():
         fetch_schema_from_transport=False
     )
 
-    query = gql("""
-    query {
-        hello
+    mutation = gql("""
+    mutation {
+        updateLowStockProducts {
+            message
+            products {
+                name
+                stock
+            }
+        }
     }
     """)
 
-    try:
-        client.execute(query)
-        status = "CRM is alive"
-    except Exception:
-        status = "CRM heartbeat failed"
+    result = client.execute(mutation)
 
-    with open("/tmp/crm_heartbeat_log.txt", "a") as f:
-        f.write(f"{timestamp} {status}\n")
+    with open("/tmp/low_stock_updates_log.txt", "a") as f:
+        for product in result["updateLowStockProducts"]["products"]:
+            f.write(
+                f"{datetime.now()} {product['name']} -> Stock: {product['stock']}\n"
+            )
