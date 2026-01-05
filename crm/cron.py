@@ -1,15 +1,29 @@
 from datetime import datetime
-import requests
+from gql import gql, Client
+from gql.transport.requests import RequestsHTTPTransport
 
 def log_crm_heartbeat():
     timestamp = datetime.now().strftime("%d/%m/%Y-%H:%M:%S")
 
+    transport = RequestsHTTPTransport(
+        url="http://localhost:8000/graphql",
+        verify=True,
+        retries=3,
+    )
+
+    client = Client(
+        transport=transport,
+        fetch_schema_from_transport=False
+    )
+
+    query = gql("""
+    query {
+        hello
+    }
+    """)
+
     try:
-        requests.post(
-            "http://localhost:8000/graphql",
-            json={"query": "{ hello }"},
-            timeout=3,
-        )
+        client.execute(query)
         status = "CRM is alive"
     except Exception:
         status = "CRM heartbeat failed"
