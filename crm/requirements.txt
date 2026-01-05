@@ -1,3 +1,2 @@
 django-crontab
-gql
-requests
+gql client
